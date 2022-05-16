@@ -8,6 +8,20 @@ const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const JSON_MIME_TYPE = "application/json; charset=UTF-8";
 
 let accessToken: string = "";
+
+const sendOrigin = async () => {
+  const host = document.location.host;
+  const hostArray = host.split(".");
+  hostArray.shift();
+  const domain = hostArray.join(".");
+  const origin = `${document.location.protocol}//${domain}`;
+  const pluginId = await application.getPluginId();
+  application.postUiMessage({
+    type: "origin",
+    origin: origin,
+    pluginId: pluginId,
+  });
+};
 application.onUiMessage = async (message: any) => {
   switch (message.type) {
     case "check-login":
@@ -15,6 +29,7 @@ application.onUiMessage = async (message: any) => {
       if (accessToken) {
         application.postUiMessage({ type: "login", accessToken: accessToken });
       }
+      await sendOrigin();
       break;
     case "login":
       accessToken = message.accessToken;
@@ -137,6 +152,10 @@ application.onNowPlayingTracksAdded = save;
 application.onNowPlayingTracksChanged = save;
 application.onNowPlayingTracksRemoved = save;
 application.onNowPlayingTracksSet = save;
+
+application.onDeepLinkMessage = async (message: string) => {
+  application.postUiMessage({ type: "deeplink", url: message });
+};
 
 const load = async () => {
   await loadFile();

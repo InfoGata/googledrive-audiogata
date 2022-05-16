@@ -58,6 +58,7 @@ export interface Application {
   getPlaylistTracks?: (playlist: IPlaylist) => Promise<void>;
   postUiMessage: (msg: any) => Promise<void>;
   onUiMessage?: (message: any) => void;
+  onDeepLinkMessage: (message: any) => Promise<void>;
   endTrack: () => Promise<void>;
   setTrackTime: (currentTime: number) => Promise<void>;
   play?: (song: ISong) => Promise<void>;
@@ -75,6 +76,7 @@ export interface Application {
   onNowPlayingTracksChanged: (track: ISong[]) => Promise<void>;
   onNowPlayingTracksSet: (track: ISong[]) => Promise<void>;
   createNotification: (notification: NotificationMessage) => Promise<void>;
+  getPluginId: () => Promise<string>;
 }
 
 export interface GetFileTypeItem {

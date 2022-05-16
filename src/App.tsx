@@ -3,15 +3,14 @@ import { useState, useEffect } from "preact/hooks";
 
 const CLIENT_ID =
   "590824233733-0uk932lnqfed56n5hfgndjhlsmdjga3h.apps.googleusercontent.com";
-
-const BASE_URL = "https://www.googleapis.com";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
 const AUTH_SCOPE = "https://www.googleapis.com/auth/drive";
-const REDIRECT_URI = "http://localhost:3000/audiogata/login_popup.html";
+const redirectPath = "/login_popup.html";
 
 const App: FunctionalComponent = () => {
   const [accessToken, setAccessToken] = useState("");
-  const [message, setMessage] = useState("");
+  const [pluginId, setPluginId] = useState("");
+  const [redirectUri, setRedirectUri] = useState("");
 
   useEffect(() => {
     const onNewWindowMessage = (event: MessageEvent) => {
@@ -20,6 +19,9 @@ const App: FunctionalComponent = () => {
           if (event.data.accessToken) {
             setAccessToken(event.data.accessToken);
           }
+        case "origin":
+          setRedirectUri(event.data.origin + redirectPath);
+          setPluginId(event.data.pluginId);
           break;
       }
     };
@@ -29,27 +31,36 @@ const App: FunctionalComponent = () => {
   });
 
   const onLogin = () => {
-    const newWindow = window.open();
-    const url = `${AUTH_URL}?redirect_uri=${encodeURIComponent(
-      REDIRECT_URI
-    )}&client_id=${CLIENT_ID}&scope=${encodeURIComponent(
-      AUTH_SCOPE
-    )}&response_type=token`;
+    const state = { pluginId: pluginId };
+    const url = new URL(AUTH_URL);
+    url.searchParams.append("client_id", CLIENT_ID);
+    url.searchParams.append("redirect_uri", redirectUri);
+    url.searchParams.append("scope", AUTH_SCOPE);
+    url.searchParams.append("response_type", "token");
+    url.searchParams.append("state", JSON.stringify(state));
+    const newWindow = window.open(url);
+
+    const onMessage = (returnUrl: string) => {
+      const url = new URL(returnUrl);
+      // params are in hash
+      url.search = url.hash.substring(1);
+      const accessToken = url.searchParams.get("access_token");
+      if (accessToken) {
+        parent.postMessage({ type: "login", accessToken: accessToken }, "*");
+        setAccessToken(accessToken);
+      }
+      newWindow.close();
+    };
 
     window.onmessage = (event: MessageEvent) => {
       if (event.source === newWindow) {
-        const url = new URL(event.data.url);
-        // params are in hash
-        url.search = url.hash.substring(1);
-        const accessToken = url.searchParams.get("access_token");
-        if (accessToken) {
-          parent.postMessage({ type: "login", accessToken: accessToken }, "*");
-          setAccessToken(accessToken);
+        onMessage(event.data.url);
+      } else {
+        if (event.data.type === "deeplink") {
+          onMessage(event.data.url);
         }
-        newWindow.close();
       }
     };
-    newWindow.location.href = url;
   };
 
   const onLogout = () => {
@@ -76,7 +87,6 @@ const App: FunctionalComponent = () => {
       ) : (
         <button onClick={onLogin}>Login</button>
       )}
-      <pre style={{ whiteSpace: "pre-wrap" }}>{message}</pre>
     </>
   );
 };
