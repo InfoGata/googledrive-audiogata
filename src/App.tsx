@@ -28,7 +28,7 @@ const App: FunctionalComponent = () => {
     window.addEventListener("message", onNewWindowMessage);
     parent.postMessage({ type: "check-login" }, "*");
     return () => window.removeEventListener("message", onNewWindowMessage);
-  });
+  }, []);
 
   const onLogin = () => {
     const state = { pluginId: pluginId };
