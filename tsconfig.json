@@ -4,6 +4,7 @@
     "jsxImportSource": "preact",
     "module": "esnext",
     "target": "es2015",
+    "strict": true,
     "moduleResolution": "node",
     "outDir": "./dist",
     "lib": [

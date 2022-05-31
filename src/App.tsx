@@ -49,7 +49,9 @@ const App: FunctionalComponent = () => {
         parent.postMessage({ type: "login", accessToken: accessToken }, "*");
         setAccessToken(accessToken);
       }
-      newWindow.close();
+      if (newWindow) {
+        newWindow.close();
+      }
     };
 
     window.onmessage = (event: MessageEvent) => {

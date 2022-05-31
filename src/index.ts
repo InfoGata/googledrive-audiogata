@@ -7,7 +7,7 @@ const BASE_URL = "https://www.googleapis.com";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const JSON_MIME_TYPE = "application/json; charset=UTF-8";
 
-let accessToken: string = "";
+let accessToken: string | null = "";
 
 const sendOrigin = async () => {
   const host = document.location.host;
@@ -33,7 +33,7 @@ application.onUiMessage = async (message: any) => {
       break;
     case "login":
       accessToken = message.accessToken;
-      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("access_token", accessToken || "");
       break;
     case "logout":
       localStorage.removeItem("access_token");
