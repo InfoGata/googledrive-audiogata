@@ -1,5 +1,6 @@
 import axios, { AxiosRequestConfig } from "axios";
-import { Application, GetFileType, ISong } from "./types";
+import { GetFileType } from "./types";
+import "audiogata-plugin-typings";
 
 declare const application: Application;
 
