@@ -74,7 +74,7 @@ const loadFile = async () => {
   const id = await getFileId();
   if (!id) return;
 
-  const response = await axios.get<ISong[]>(
+  const response = await axios.get<Track[]>(
     `${BASE_URL}/drive/v2/files/${id}?alt=media`,
     getRequestConfig()
   );
