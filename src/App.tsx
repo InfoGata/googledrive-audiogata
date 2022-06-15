@@ -1,12 +1,36 @@
 import { Button } from "@mui/material";
+import axios from "axios";
 import { FunctionalComponent } from "preact";
 import { useState, useEffect } from "preact/hooks";
+import { CLIENT_ID, TOKEN_SERVER } from "./shared";
 
-const CLIENT_ID =
-  "590824233733-0uk932lnqfed56n5hfgndjhlsmdjga3h.apps.googleusercontent.com";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
 const AUTH_SCOPE = "https://www.googleapis.com/auth/drive";
 const redirectPath = "/login_popup.html";
+
+interface TokenResponse {
+  access_token: string;
+  expires_in: number;
+  token_type: string;
+  scope: string;
+  refresh_token: string;
+}
+
+const getToken = async (code: string, redirectUri: string) => {
+  const params = new URLSearchParams();
+  params.append("client_id", CLIENT_ID);
+  params.append("code", code);
+  params.append("redirect_uri", redirectUri);
+  params.append("grant_type", "authorization_code");
+
+  const result = await axios.post<TokenResponse>(TOKEN_SERVER, params, {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+  console.log(result);
+  return result.data;
+};
 
 const App: FunctionalComponent = () => {
   const [accessToken, setAccessToken] = useState("");
@@ -37,18 +61,28 @@ const App: FunctionalComponent = () => {
     url.searchParams.append("client_id", CLIENT_ID);
     url.searchParams.append("redirect_uri", redirectUri);
     url.searchParams.append("scope", AUTH_SCOPE);
-    url.searchParams.append("response_type", "token");
+    url.searchParams.append("response_type", "code");
     url.searchParams.append("state", JSON.stringify(state));
+    url.searchParams.append("include_granted_scopes", "true");
+    url.searchParams.append("access_type", "offline");
+    url.searchParams.append("prompt", "consent");
+
     const newWindow = window.open(url);
 
-    const onMessage = (returnUrl: string) => {
+    const onMessage = async (returnUrl: string) => {
       const url = new URL(returnUrl);
-      // params are in hash
-      url.search = url.hash.substring(1);
-      const accessToken = url.searchParams.get("access_token");
-      if (accessToken) {
-        parent.postMessage({ type: "login", accessToken: accessToken }, "*");
-        setAccessToken(accessToken);
+      const code = url.searchParams.get("code");
+
+      if (code) {
+        const response = await getToken(code, redirectUri);
+        parent.postMessage(
+          {
+            type: "login",
+            accessToken: response.access_token,
+            refreshToken: response.refresh_token,
+          },
+          "*"
+        );
       }
       if (newWindow) {
         newWindow.close();

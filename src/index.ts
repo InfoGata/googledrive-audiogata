@@ -1,8 +1,61 @@
-import axios, { AxiosRequestConfig } from "axios";
+import axios from "axios";
 import { GetFileType } from "./types";
 import "audiogata-plugin-typings";
+import { CLIENT_ID, TOKEN_SERVER } from "./shared";
 
-declare const application: Application;
+const http = axios.create();
+
+http.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("access_token");
+    if (token && config.headers) {
+      config.headers["Authorization"] = "Bearer " + token;
+    }
+    return config;
+  },
+  (error) => {
+    Promise.reject(error);
+  }
+);
+
+http.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const accessToken = await refreshToken();
+      axios.defaults.headers.common["Authorization"] = "Bearer " + accessToken;
+      return http(originalRequest);
+    }
+  }
+);
+
+const setTokens = (accessToken: string, refreshToken: string) => {
+  localStorage.setItem("access_token", accessToken);
+  localStorage.setItem("refresh_token", refreshToken);
+};
+
+const refreshToken = async () => {
+  const refreshToken = localStorage.getItem("refresh_token");
+  if (!refreshToken) return;
+
+  const params = new URLSearchParams();
+  params.append("client_id", CLIENT_ID);
+  params.append("refresh_token", refreshToken);
+  params.append("grant_type", "refresh_token");
+  const result = await axios.post(TOKEN_SERVER, params, {
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+  if (result.data.access_token && result.data.refresh_token) {
+    setTokens(result.data.access_token, result.data.refresh_token);
+    return result.data.access_token as string;
+  }
+};
 
 const BASE_URL = "https://www.googleapis.com";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
@@ -49,20 +102,10 @@ application.onUiMessage = async (message: any) => {
   }
 };
 
-const getRequestConfig = () => {
-  const config: AxiosRequestConfig = {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  };
-  return config;
-};
-
 const getFolder = async () => {
   const query = `mimeType = '${FOLDER_MIME_TYPE}' and title = 'audiogata'`;
-  const response = await axios.get<GetFileType>(
-    `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`,
-    getRequestConfig()
+  const response = await http.get<GetFileType>(
+    `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
   );
   if (response.data.items.length > 0) {
     return response.data.items[0].id;
@@ -74,9 +117,8 @@ const loadFile = async () => {
   const id = await getFileId();
   if (!id) return;
 
-  const response = await axios.get<Track[]>(
-    `${BASE_URL}/drive/v2/files/${id}?alt=media`,
-    getRequestConfig()
+  const response = await http.get<Track[]>(
+    `${BASE_URL}/drive/v2/files/${id}?alt=media`
   );
   await application.setNowPlayingTracks(response.data);
 };
@@ -86,9 +128,8 @@ const getFileId = async () => {
   if (!id) return;
 
   const query = `'${id}' in parents and title = 'tracks.json'`;
-  const response = await axios.get<GetFileType>(
-    `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`,
-    getRequestConfig()
+  const response = await http.get<GetFileType>(
+    `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
   );
   if (response.data.items.length > 0) {
     return response.data.items[0].id;
@@ -97,14 +138,10 @@ const getFileId = async () => {
 };
 
 const createFolder = async () => {
-  await axios.post(
-    BASE_URL + "/drive/v2/files",
-    {
-      title: "audiogata",
-      mimeType: FOLDER_MIME_TYPE,
-    },
-    getRequestConfig()
-  );
+  await http.post(BASE_URL + "/drive/v2/files", {
+    title: "audiogata",
+    mimeType: FOLDER_MIME_TYPE,
+  });
 };
 
 const createFile = async () => {
@@ -117,31 +154,25 @@ const createFile = async () => {
   const tracks = await application.getNowPlayingTracks();
   const fileId = await getFileId();
   if (fileId) {
-    const response = await axios.put(
+    const response = await http.put(
       BASE_URL + `/upload/drive/v2/files/${fileId}?uploadType=resumable`,
       {
         mimeType: JSON_MIME_TYPE,
-      },
-      getRequestConfig()
+      }
     );
     const location = response.headers.location;
-    await axios.put(location, JSON.stringify(tracks), {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    await http.put(location, JSON.stringify(tracks));
   } else {
-    const response = await axios.post(
+    const response = await http.post(
       BASE_URL + "/upload/drive/v2/files?uploadType=resumable",
       {
         title: "tracks.json",
         parents: [{ id }],
         mimeType: JSON_MIME_TYPE,
-      },
-      getRequestConfig()
+      }
     );
     const location = response.headers.location;
-    await axios.post(location, JSON.stringify(tracks), {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
+    await http.post(location, JSON.stringify(tracks));
   }
 };
 
