@@ -27,7 +27,7 @@ http.interceptors.response.use(
     if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const accessToken = await refreshToken();
-      axios.defaults.headers.common["Authorization"] = "Bearer " + accessToken;
+      http.defaults.headers.common["Authorization"] = "Bearer " + accessToken;
       return http(originalRequest);
     }
   }
