@@ -57,11 +57,23 @@ const refreshToken = async () => {
   }
 };
 
+const loadMethods = () => {
+  application.onNowPlayingTracksAdded = save;
+  application.onNowPlayingTracksChanged = save;
+  application.onNowPlayingTracksRemoved = save;
+  application.onNowPlayingTracksSet = save;
+};
+
+const removeMethods = () => {
+  application.onNowPlayingTracksAdded = undefined;
+  application.onNowPlayingTracksChanged = undefined;
+  application.onNowPlayingTracksRemoved = undefined;
+  application.onNowPlayingTracksSet = undefined;
+};
+
 const BASE_URL = "https://www.googleapis.com";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const JSON_MIME_TYPE = "application/json; charset=UTF-8";
-
-let accessToken: string | null = "";
 
 const sendOrigin = async () => {
   const host = document.location.host;
@@ -79,19 +91,20 @@ const sendOrigin = async () => {
 application.onUiMessage = async (message: any) => {
   switch (message.type) {
     case "check-login":
-      accessToken = localStorage.getItem("access_token");
+      const accessToken = localStorage.getItem("access_token");
       if (accessToken) {
         application.postUiMessage({ type: "login", accessToken: accessToken });
       }
       await sendOrigin();
       break;
     case "login":
-      accessToken = message.accessToken;
-      localStorage.setItem("access_token", accessToken || "");
+      setTokens(message.accessToken, message.refreshToken);
+      loadMethods();
       break;
     case "logout":
       localStorage.removeItem("access_token");
-      accessToken = null;
+      localStorage.removeItem("refresh_token");
+      removeMethods();
       break;
     case "save":
       await save();
@@ -180,11 +193,6 @@ const save = async () => {
   await createFile();
 };
 
-application.onNowPlayingTracksAdded = save;
-application.onNowPlayingTracksChanged = save;
-application.onNowPlayingTracksRemoved = save;
-application.onNowPlayingTracksSet = save;
-
 application.onDeepLinkMessage = async (message: string) => {
   application.postUiMessage({ type: "deeplink", url: message });
 };
@@ -194,7 +202,10 @@ const load = async () => {
 };
 
 const init = () => {
-  accessToken = localStorage.getItem("access_token");
+  const accessToken = localStorage.getItem("access_token");
+  if (accessToken) {
+    loadMethods();
+  }
 };
 
 init();
