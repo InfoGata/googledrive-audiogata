@@ -1,9 +1,13 @@
 import axios from "axios";
-import { GetFileType } from "./types";
+import { GetFileType, MessageType, UiMessageType } from "./types";
 import "audiogata-plugin-typings";
-import { CLIENT_ID, TOKEN_SERVER } from "./shared";
+import { CLIENT_ID, TOKEN_SERVER, TOKEN_URL } from "./shared";
 
 const http = axios.create();
+
+const sendMessage = (message: MessageType) => {
+  application.postUiMessage(message);
+};
 
 http.interceptors.request.use(
   (config) => {
@@ -42,11 +46,20 @@ const refreshToken = async () => {
   const refreshToken = localStorage.getItem("refresh_token");
   if (!refreshToken) return;
 
+  const clientId = localStorage.getItem("clientId");
+  const clientSecret = localStorage.getItem("clientSecret");
+  let tokenUrl = TOKEN_SERVER;
+
   const params = new URLSearchParams();
-  params.append("client_id", CLIENT_ID);
+  params.append("client_id", clientId || CLIENT_ID);
   params.append("refresh_token", refreshToken);
   params.append("grant_type", "refresh_token");
-  const result = await axios.post(TOKEN_SERVER, params, {
+
+  if (clientId && clientSecret) {
+    params.append("client_secret", clientSecret);
+    tokenUrl = TOKEN_URL;
+  }
+  const result = await axios.post(tokenUrl, params, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
@@ -75,27 +88,31 @@ const BASE_URL = "https://www.googleapis.com";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const JSON_MIME_TYPE = "application/json; charset=UTF-8";
 
-const sendOrigin = async () => {
+const sendInfo = async () => {
   const host = document.location.host;
   const hostArray = host.split(".");
   hostArray.shift();
   const domain = hostArray.join(".");
   const origin = `${document.location.protocol}//${domain}`;
   const pluginId = await application.getPluginId();
-  application.postUiMessage({
-    type: "origin",
+  const clientId = localStorage.getItem("clientId") ?? "";
+  const clientSecret = localStorage.getItem("clientSecret") ?? "";
+  sendMessage({
+    type: "info",
     origin: origin,
     pluginId: pluginId,
+    clientId: clientId,
+    clientSecret: clientSecret,
   });
 };
-application.onUiMessage = async (message: any) => {
+application.onUiMessage = async (message: UiMessageType) => {
   switch (message.type) {
     case "check-login":
       const accessToken = localStorage.getItem("access_token");
       if (accessToken) {
-        application.postUiMessage({ type: "login", accessToken: accessToken });
+        sendMessage({ type: "login", accessToken: accessToken });
       }
-      await sendOrigin();
+      await sendInfo();
       break;
     case "login":
       setTokens(message.accessToken, message.refreshToken);
@@ -111,6 +128,11 @@ application.onUiMessage = async (message: any) => {
       break;
     case "load":
       await load();
+      break;
+    case "set-keys":
+      localStorage.setItem("clientId", message.clientId);
+      localStorage.setItem("clientSecret", message.clientSecret);
+      application.createNotification({ message: "Api keys Saved!" });
       break;
   }
 };
