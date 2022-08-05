@@ -20,7 +20,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { VisibilityOff, Visibility } from "@mui/icons-material";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
-const AUTH_SCOPE = "https://www.googleapis.com/auth/drive";
+const AUTH_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const redirectPath = "/login_popup.html";
 
 interface TokenResponse {
@@ -51,7 +51,7 @@ const sendUiMessage = (message: UiMessageType) => {
 };
 
 const App: FunctionalComponent = () => {
-  const [accessToken, setAccessToken] = useState("");
+  const [isLoggedin, setIsLoggedin] = useState(false);
   const [pluginId, setPluginId] = useState("");
   const [redirectUri, setRedirectUri] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -65,7 +65,7 @@ const App: FunctionalComponent = () => {
       switch (event.data.type) {
         case "login":
           if (event.data.accessToken) {
-            setAccessToken(event.data.accessToken);
+            setIsLoggedin(true);
           }
           break;
         case "info":
@@ -118,6 +118,7 @@ const App: FunctionalComponent = () => {
     };
 
     window.onmessage = (event: MessageEvent) => {
+      console.log("why?", event);
       if (event.source === newWindow) {
         onMessage(event.data.url);
       } else {
@@ -129,7 +130,7 @@ const App: FunctionalComponent = () => {
   };
 
   const onLogout = () => {
-    setAccessToken("");
+    setIsLoggedin(false);
     sendUiMessage({ type: "logout" });
   };
 
@@ -178,7 +179,7 @@ const App: FunctionalComponent = () => {
       sx={{ display: "flex", "& .MuiTextField-root": { m: 1, width: "25ch" } }}
     >
       <CssBaseline />
-      {accessToken ? (
+      {isLoggedin ? (
         <div>
           <Button variant="contained" onClick={onSave}>
             Save Now Playing

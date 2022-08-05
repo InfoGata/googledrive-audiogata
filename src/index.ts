@@ -70,20 +70,6 @@ const refreshToken = async () => {
   }
 };
 
-const loadMethods = () => {
-  application.onNowPlayingTracksAdded = save;
-  application.onNowPlayingTracksChanged = save;
-  application.onNowPlayingTracksRemoved = save;
-  application.onNowPlayingTracksSet = save;
-};
-
-const removeMethods = () => {
-  application.onNowPlayingTracksAdded = undefined;
-  application.onNowPlayingTracksChanged = undefined;
-  application.onNowPlayingTracksRemoved = undefined;
-  application.onNowPlayingTracksSet = undefined;
-};
-
 const BASE_URL = "https://www.googleapis.com";
 const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
 const JSON_MIME_TYPE = "application/json; charset=UTF-8";
@@ -116,12 +102,10 @@ application.onUiMessage = async (message: UiMessageType) => {
       break;
     case "login":
       setTokens(message.accessToken, message.refreshToken);
-      loadMethods();
       break;
     case "logout":
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
-      removeMethods();
       break;
     case "save":
       await save();
@@ -222,12 +206,3 @@ application.onDeepLinkMessage = async (message: string) => {
 const load = async () => {
   await loadFile();
 };
-
-const init = () => {
-  const accessToken = localStorage.getItem("access_token");
-  if (accessToken) {
-    loadMethods();
-  }
-};
-
-init();
