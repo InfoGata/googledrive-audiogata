@@ -31,15 +31,22 @@ http.interceptors.response.use(
     if (error.response.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const accessToken = await refreshToken();
-      http.defaults.headers.common["Authorization"] = "Bearer " + accessToken;
+      if (accessToken) {
+        originalRequest.headers = {
+          ...originalRequest.headers,
+          authorization: `Bearer ${accessToken}`,
+        };
+      }
       return http(originalRequest);
     }
   }
 );
 
-const setTokens = (accessToken: string, refreshToken: string) => {
+const setTokens = (accessToken: string, refreshToken?: string) => {
   localStorage.setItem("access_token", accessToken);
-  localStorage.setItem("refresh_token", refreshToken);
+  if (refreshToken) {
+    localStorage.setItem("refresh_token", refreshToken);
+  }
 };
 
 const refreshToken = async () => {
@@ -64,7 +71,7 @@ const refreshToken = async () => {
       "Content-Type": "application/x-www-form-urlencoded",
     },
   });
-  if (result.data.access_token && result.data.refresh_token) {
+  if (result.data.access_token) {
     setTokens(result.data.access_token, result.data.refresh_token);
     return result.data.access_token as string;
   }
