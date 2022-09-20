@@ -111,6 +111,7 @@ const App: FunctionalComponent = () => {
           accessToken: response.access_token,
           refreshToken: response.refresh_token,
         });
+        setIsLoggedin(true);
       }
       if (newWindow) {
         newWindow.close();
@@ -134,12 +135,28 @@ const App: FunctionalComponent = () => {
     sendUiMessage({ type: "logout" });
   };
 
-  const onSave = () => {
-    sendUiMessage({ type: "save" });
+  const onSaveNowPlaying = () => {
+    sendUiMessage({ type: "save-nowplaying" });
   };
 
-  const onLoad = () => {
-    sendUiMessage({ type: "load" });
+  const onLoadNowPlaying = () => {
+    sendUiMessage({ type: "load-nowplaying" });
+  };
+
+  const onSavePlaylists = () => {
+    sendUiMessage({ type: "save-playlists" });
+  };
+
+  const onLoadPlaylists = () => {
+    sendUiMessage({ type: "load-playlists" });
+  };
+
+  const onSavePlugins = () => {
+    sendUiMessage({ type: "save-plugins" });
+  };
+
+  const onLoadPlugins = () => {
+    sendUiMessage({ type: "install-plugins" });
   };
 
   const onSaveKeys = () => {
@@ -180,17 +197,37 @@ const App: FunctionalComponent = () => {
     >
       <CssBaseline />
       {isLoggedin ? (
-        <div>
-          <Button variant="contained" onClick={onSave}>
-            Save Now Playing
-          </Button>
-          <Button variant="contained" onClick={onLoad}>
-            Load Now Playing
-          </Button>
-          <Button variant="contained" onClick={onLogout}>
-            Logout
-          </Button>
-        </div>
+        <Box sx={{ "& button": { m: 1 } }}>
+          <div>
+            <Button variant="contained" onClick={onSaveNowPlaying}>
+              Save Now Playing
+            </Button>
+            <Button variant="contained" onClick={onLoadNowPlaying}>
+              Load Now Playing
+            </Button>
+          </div>
+          <div>
+            <Button variant="contained" onClick={onSavePlaylists}>
+              Save Playlists
+            </Button>
+            <Button variant="contained" onClick={onLoadPlaylists}>
+              Load Playlists
+            </Button>
+          </div>
+          <div>
+            <Button variant="contained" onClick={onSavePlugins}>
+              Save Plugins
+            </Button>
+            <Button variant="contained" onClick={onLoadPlugins}>
+              Load Plugins
+            </Button>
+          </div>
+          <div>
+            <Button variant="contained" onClick={onLogout}>
+              Logout
+            </Button>
+          </div>
+        </Box>
       ) : (
         <div>
           <Button variant="contained" onClick={onLogin}>

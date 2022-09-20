@@ -22,11 +22,23 @@ type UiSetKeysType = {
   clientId: string;
   clientSecret: string;
 };
-type UiSaveType = {
-  type: "save";
+type UiSaveNowPlayingType = {
+  type: "save-nowplaying";
 };
-type UiLoadType = {
-  type: "load";
+type UiLoadNowPlayingType = {
+  type: "load-nowplaying";
+};
+type UiSavePlaylistsType = {
+  type: "save-playlists";
+};
+type UiLoadPlaylistsType = {
+  type: "load-playlists";
+};
+type UiSavePluginsType = {
+  type: "save-plugins";
+};
+type UiInstallPluginsType = {
+  type: "install-plugins";
 };
 
 export type UiMessageType =
@@ -34,8 +46,12 @@ export type UiMessageType =
   | UiLoginType
   | UiLogoutType
   | UiSetKeysType
-  | UiLoadType
-  | UiSaveType;
+  | UiSaveNowPlayingType
+  | UiLoadNowPlayingType
+  | UiSavePlaylistsType
+  | UiLoadPlaylistsType
+  | UiSavePluginsType
+  | UiInstallPluginsType;
 
 type LoginType = {
   type: "login";

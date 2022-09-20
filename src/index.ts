@@ -5,6 +5,14 @@ import { CLIENT_ID, TOKEN_SERVER, TOKEN_URL } from "./shared";
 
 const http = axios.create();
 
+const folderName = "audiogata";
+const playlistFileName = "playlists.json";
+const pluginsFileName = "plugins.json";
+const nowplayingFileName = "nowplaying.json";
+const BASE_URL = "https://www.googleapis.com";
+const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+const JSON_MIME_TYPE = "application/json; charset=UTF-8";
+
 const sendMessage = (message: MessageType) => {
   application.postUiMessage(message);
 };
@@ -77,10 +85,6 @@ const refreshToken = async () => {
   }
 };
 
-const BASE_URL = "https://www.googleapis.com";
-const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
-const JSON_MIME_TYPE = "application/json; charset=UTF-8";
-
 const sendInfo = async () => {
   const host = document.location.host;
   const hostArray = host.split(".");
@@ -114,11 +118,26 @@ application.onUiMessage = async (message: UiMessageType) => {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       break;
-    case "save":
-      await save();
+    case "save-nowplaying":
+      await saveNowPlaying();
       break;
-    case "load":
-      await load();
+    case "load-nowplaying":
+      await loadNowplaying();
+      break;
+    case "save-playlists":
+      await savePlaylists();
+      application.createNotification({ message: "Playlists Saved!" });
+      break;
+    case "load-playlists":
+      await loadPlaylists();
+      application.createNotification({ message: "Playlists Loaded!" });
+      break;
+    case "save-plugins":
+      await savePlugins();
+      application.createNotification({ message: "Plugins Saved!" });
+      break;
+    case "install-plugins":
+      installPlugins();
       break;
     case "set-keys":
       localStorage.setItem("clientId", message.clientId);
@@ -129,7 +148,7 @@ application.onUiMessage = async (message: UiMessageType) => {
 };
 
 const getFolder = async () => {
-  const query = `mimeType = '${FOLDER_MIME_TYPE}' and title = 'audiogata'`;
+  const query = `mimeType = '${FOLDER_MIME_TYPE}' and title = '${folderName}'`;
   const response = await http.get<GetFileType>(
     `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
   );
@@ -139,21 +158,21 @@ const getFolder = async () => {
   return "";
 };
 
-const loadFile = async () => {
-  const id = await getFileId();
+const loadFile = async <T>(filename: string) => {
+  const id = await getFileId(filename);
   if (!id) return;
 
-  const response = await http.get<Track[]>(
+  const response = await http.get<T>(
     `${BASE_URL}/drive/v2/files/${id}?alt=media`
   );
-  await application.setNowPlayingTracks(response.data);
+  return response.data;
 };
 
-const getFileId = async () => {
+const getFileId = async (filename: string) => {
   const id = await getFolder();
   if (!id) return;
 
-  const query = `'${id}' in parents and title = 'tracks.json'`;
+  const query = `'${id}' in parents and title = '${filename}'`;
   const response = await http.get<GetFileType>(
     `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
   );
@@ -165,20 +184,19 @@ const getFileId = async () => {
 
 const createFolder = async () => {
   await http.post(BASE_URL + "/drive/v2/files", {
-    title: "audiogata",
+    title: folderName,
     mimeType: FOLDER_MIME_TYPE,
   });
 };
 
-const createFile = async () => {
+const createFile = async (filename: string, data: any) => {
   let id = await getFolder();
   if (!id) {
     await createFolder();
     id = await getFolder();
   }
 
-  const tracks = await application.getNowPlayingTracks();
-  const fileId = await getFileId();
+  const fileId = await getFileId(filename);
   if (fileId) {
     const response = await http.put(
       BASE_URL + `/upload/drive/v2/files/${fileId}?uploadType=resumable`,
@@ -187,29 +205,57 @@ const createFile = async () => {
       }
     );
     const location = response.headers.location;
-    await http.put(location, JSON.stringify(tracks));
+    await http.put(location, JSON.stringify(data));
   } else {
     const response = await http.post(
       BASE_URL + "/upload/drive/v2/files?uploadType=resumable",
       {
-        title: "tracks.json",
+        title: filename,
         parents: [{ id }],
         mimeType: JSON_MIME_TYPE,
       }
     );
     const location = response.headers.location;
-    await http.post(location, JSON.stringify(tracks));
+    await http.post(location, JSON.stringify(data));
   }
 };
 
-const save = async () => {
-  await createFile();
+const saveNowPlaying = async () => {
+  const tracks = await application.getNowPlayingTracks();
+  await createFile(nowplayingFileName, tracks);
+};
+
+const loadNowplaying = async () => {
+  const data = await loadFile<Track[]>(nowplayingFileName);
+  if (data) {
+    await application.setNowPlayingTracks(data);
+  }
+};
+
+const savePlaylists = async () => {
+  const playlists = await application.getPlaylists();
+  await createFile(playlistFileName, playlists);
+};
+
+const loadPlaylists = async () => {
+  const data = await loadFile<Playlist[]>(playlistFileName);
+  if (data) {
+    await application.addPlaylists(data);
+  }
+};
+
+const savePlugins = async () => {
+  const plugins = await application.getPlugins();
+  await createFile(pluginsFileName, plugins);
+};
+
+const installPlugins = async () => {
+  const data = await loadFile<PluginInfo[]>(pluginsFileName);
+  if (data) {
+    await application.installPlugins(data);
+  }
 };
 
 application.onDeepLinkMessage = async (message: string) => {
   application.postUiMessage({ type: "deeplink", url: message });
-};
-
-const load = async () => {
-  await loadFile();
 };
