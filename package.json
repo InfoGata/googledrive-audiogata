@@ -24,7 +24,7 @@
     "preact": "^10.7.1"
   },
   "devDependencies": {
-    "audiogata-plugin-typings": "git@gitlab.com:elijahgreen/audiogata-plugin-typings.git",
+    "audiogata-plugin-typings": "1.0.1",
     "parcel": "^2.5.0",
     "process": "^0.11.10",
     "typescript": "^4.6.3"
