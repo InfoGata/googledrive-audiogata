@@ -1,6 +1,5 @@
 import axios from "axios";
 import { GetFileType, MessageType, UiMessageType } from "./types";
-import "audiogata-plugin-typings";
 import { CLIENT_ID, TOKEN_SERVER, TOKEN_URL } from "./shared";
 
 const http = axios.create();
