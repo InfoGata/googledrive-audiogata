@@ -16,12 +16,12 @@
   "author": "Elijah Green",
   "license": "MIT",
   "dependencies": {
-    "@emotion/react": "^11.7.1",
-    "@emotion/styled": "^11.6.0",
-    "@mui/icons-material": "^5.8.4",
-    "@mui/material": "5.1.0",
+    "@emotion/react": "^11.10.4",
+    "@emotion/styled": "^11.10.4",
+    "@mui/icons-material": "^5.10.9",
+    "@mui/material": "^5.10.9",
     "axios": "^0.26.1",
-    "preact": "^10.7.1"
+    "preact": "^10.11.2"
   },
   "devDependencies": {
     "@infogata/audiogata-plugin-typings": "1.0.3",
