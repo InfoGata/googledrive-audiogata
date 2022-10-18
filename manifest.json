@@ -6,5 +6,6 @@
   "script": "dist/index.js",
   "options": {
     "page": "dist/options.html"
-  }
+  },
+  "updateUrl": "https://cdn.jsdelivr.net/gh/InfoGata/googledrive-audiogata@latest/manifest.json"
 }
