@@ -143,6 +143,9 @@ application.onUiMessage = async (message: UiMessageType) => {
       localStorage.setItem("clientSecret", message.clientSecret);
       application.createNotification({ message: "Api keys Saved!" });
       break;
+    default:
+      const _exhaustive: never = message;
+      break;
   }
 };
 

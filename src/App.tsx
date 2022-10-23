@@ -74,6 +74,9 @@ const App: FunctionalComponent = () => {
           setClientId(event.data.clientId);
           setClientSecret(event.data.clientSecret);
           break;
+        default:
+          const _exhaustive: never = event.data;
+          break;
       }
     };
     window.addEventListener("message", onNewWindowMessage);
