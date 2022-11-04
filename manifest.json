@@ -7,5 +7,6 @@
   "options": {
     "page": "dist/options.html"
   },
-  "updateUrl": "https://cdn.jsdelivr.net/gh/InfoGata/googledrive-audiogata@latest/manifest.json"
+  "updateUrl": "https://cdn.jsdelivr.net/gh/InfoGata/googledrive-audiogata@latest/manifest.json",
+  "homepage": "https://github.com/InfoGata/googledrive-audiogata"
 }
