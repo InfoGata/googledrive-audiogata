@@ -1,18 +1,14 @@
-import { createTheme, ThemeProvider } from "@mui/material";
-import { render } from "preact";
+import { ColorModeProvider } from "@kobalte/core";
 import App from "./App";
-
-const theme = createTheme({
-  palette: {
-    mode: "dark",
-  },
-});
+import { render } from "solid-js/web";
 
 export const init = () => {
   render(
-    <ThemeProvider theme={theme}>
-      <App />
-    </ThemeProvider>,
+    () => (
+      <ColorModeProvider>
+        <App />
+      </ColorModeProvider>
+    ),
     document.body
   );
 };

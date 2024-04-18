@@ -1,23 +1,15 @@
-import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
-  Box,
-  Button,
-  CssBaseline,
-  IconButton,
-  InputAdornment,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
 import axios from "axios";
-import { FunctionalComponent, JSX } from "preact";
-import { useState, useEffect } from "preact/hooks";
 import { CLIENT_ID, TOKEN_SERVER } from "./shared";
 import { MessageType, UiMessageType } from "./types";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { VisibilityOff, Visibility } from "@mui/icons-material";
+import { createEffect, createSignal } from "solid-js";
+import { Button } from "./components/ui/button";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "./components/ui/accordion";
+import { Input } from "./components/ui/input";
 
 const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
 const AUTH_SCOPE = "https://www.googleapis.com/auth/drive.file";
@@ -50,17 +42,17 @@ const sendUiMessage = (message: UiMessageType) => {
   parent.postMessage(message, "*");
 };
 
-const App: FunctionalComponent = () => {
-  const [isLoggedin, setIsLoggedin] = useState(false);
-  const [pluginId, setPluginId] = useState("");
-  const [redirectUri, setRedirectUri] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [useOwnKeys, setUseOwnKeys] = useState(false);
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+const App = () => {
+  const [isLoggedin, setIsLoggedin] = createSignal(false);
+  const [pluginId, setPluginId] = createSignal("");
+  const [redirectUri, setRedirectUri] = createSignal("");
+  const [showAdvanced, setShowAdvanced] = createSignal(false);
+  const [useOwnKeys, setUseOwnKeys] = createSignal(false);
+  const [clientId, setClientId] = createSignal("");
+  const [clientSecret, setClientSecret] = createSignal("");
+  const [showPassword, setShowPassword] = createSignal(false);
 
-  useEffect(() => {
+  createEffect(() => {
     const onNewWindowMessage = (event: MessageEvent<MessageType>) => {
       switch (event.data.type) {
         case "login":
@@ -87,12 +79,12 @@ const App: FunctionalComponent = () => {
   const onLogin = () => {
     const state = { pluginId: pluginId };
     const url = new URL(AUTH_URL);
-    if (useOwnKeys) {
-      url.searchParams.append("client_id", clientId);
+    if (useOwnKeys()) {
+      url.searchParams.append("client_id", clientId());
     } else {
       url.searchParams.append("client_id", CLIENT_ID);
     }
-    url.searchParams.append("redirect_uri", redirectUri);
+    url.searchParams.append("redirect_uri", redirectUri());
     url.searchParams.append("scope", AUTH_SCOPE);
     url.searchParams.append("response_type", "code");
     url.searchParams.append("state", JSON.stringify(state));
@@ -108,7 +100,7 @@ const App: FunctionalComponent = () => {
       const code = url.searchParams.get("code");
 
       if (code) {
-        const response = await getToken(code, redirectUri);
+        const response = await getToken(code, redirectUri());
         sendUiMessage({
           type: "login",
           accessToken: response.access_token,
@@ -166,8 +158,8 @@ const App: FunctionalComponent = () => {
     setUseOwnKeys(!!clientId);
     sendUiMessage({
       type: "set-keys",
-      clientId: clientId,
-      clientSecret: clientSecret,
+      clientId: clientId(),
+      clientSecret: clientSecret(),
     });
   };
 
@@ -182,119 +174,69 @@ const App: FunctionalComponent = () => {
     });
   };
 
-  const onAccordionChange = (_: any, expanded: boolean) => {
-    setShowAdvanced(expanded);
-  };
-
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-
-  const handleMouseDownPassword = (event: JSX.TargetedEvent) => {
-    event.preventDefault();
-  };
-
   return (
-    <Box
-      sx={{ display: "flex", "& .MuiTextField-root": { m: 1, width: "25ch" } }}
-    >
-      <CssBaseline />
-      {isLoggedin ? (
-        <Box sx={{ "& button": { m: 1 } }}>
-          <div>
-            <Button variant="contained" onClick={onSaveNowPlaying}>
-              Save Now Playing
-            </Button>
-            <Button variant="contained" onClick={onLoadNowPlaying}>
-              Load Now Playing
-            </Button>
+    <div class="flex">
+      {isLoggedin() ? (
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <Button onClick={onSaveNowPlaying}>Save Now Playing</Button>
+            <Button onClick={onLoadNowPlaying}>Load Now Playing</Button>
           </div>
-          <div>
-            <Button variant="contained" onClick={onSavePlaylists}>
-              Save Playlists
-            </Button>
-            <Button variant="contained" onClick={onLoadPlaylists}>
-              Load Playlists
-            </Button>
+          <div class="flex gap-2">
+            <Button onClick={onSavePlaylists}>Save Playlists</Button>
+            <Button onClick={onLoadPlaylists}>Load Playlists</Button>
           </div>
-          <div>
-            <Button variant="contained" onClick={onSavePlugins}>
-              Save Plugins
-            </Button>
-            <Button variant="contained" onClick={onLoadPlugins}>
-              Load Plugins
-            </Button>
+          <div class="flex gap-2">
+            <Button onClick={onSavePlugins}>Save Plugins</Button>
+            <Button onClick={onLoadPlugins}>Load Plugins</Button>
           </div>
-          <div>
-            <Button variant="contained" onClick={onLogout}>
-              Logout
-            </Button>
+          <div class="flex gap-2">
+            <Button onClick={onLogout}>Logout</Button>
           </div>
-        </Box>
+        </div>
       ) : (
         <div>
-          <Button variant="contained" onClick={onLogin}>
-            Login
-          </Button>
-          <Accordion expanded={showAdvanced} onChange={onAccordionChange}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              aria-controls="panel1d-content"
-              id="panel1d-header"
-            >
-              <Typography>Advanced Configuration</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Typography>Supplying your own keys:</Typography>
-              <Typography>
-                {redirectUri} needs be added to Authorized Javascript URIs
-              </Typography>
+          <Button onClick={onLogin}>Login</Button>
+          <Accordion multiple collapsible>
+            <AccordionItem value="item-1">
+              <AccordionTrigger>Advanced Configuration</AccordionTrigger>
+              <AccordionContent></AccordionContent>
+            </AccordionItem>
+            <div class="flex flex-col gap-4 m-4">
+              <p>Supplying your own keys:</p>
+              <p>
+                {redirectUri()} needs be added to Authorized Javascript URIs
+              </p>
               <div>
-                <TextField
-                  label="Client ID"
-                  value={clientId}
+                <Input
+                  placeholder="Client ID"
+                  value={clientId()}
                   onChange={(e) => {
                     const value = e.currentTarget.value;
                     setClientId(value);
                   }}
                 />
-                <TextField
-                  type={showPassword ? "text" : "password"}
-                  label="Client Secret"
-                  value={clientSecret}
+                <Input
+                  type="text"
+                  placeholder="Client Secret"
+                  value={clientSecret()}
                   onChange={(e) => {
                     const value = e.currentTarget.value;
                     setClientSecret(value);
                   }}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          aria-label="toggle password visibility"
-                          onClick={handleClickShowPassword}
-                          onMouseDown={handleMouseDownPassword}
-                          edge="end"
-                        >
-                          {showPassword ? <VisibilityOff /> : <Visibility />}
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  }}
                 />
               </div>
-              <Stack spacing={2} direction="row">
-                <Button variant="contained" onClick={onSaveKeys}>
-                  Save
-                </Button>
-                <Button variant="contained" onClick={onClearKeys} color="error">
+              <div class="flex gap-2">
+                <Button onClick={onSaveKeys}>Save</Button>
+                <Button onClick={onClearKeys} color="error">
                   Clear
                 </Button>
-              </Stack>
-            </AccordionDetails>
+              </div>
+            </div>
           </Accordion>
         </div>
       )}
-    </Box>
+    </div>
   );
 };
 
