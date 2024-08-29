@@ -176,66 +176,71 @@ const App = () => {
 
   return (
     <div class="flex">
-      {isLoggedin() ? (
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-2">
-            <Button onClick={onSaveNowPlaying}>Save Now Playing</Button>
-            <Button onClick={onLoadNowPlaying}>Load Now Playing</Button>
-          </div>
-          <div class="flex gap-2">
-            <Button onClick={onSavePlaylists}>Save Playlists</Button>
-            <Button onClick={onLoadPlaylists}>Load Playlists</Button>
-          </div>
-          <div class="flex gap-2">
-            <Button onClick={onSavePlugins}>Save Plugins</Button>
-            <Button onClick={onLoadPlugins}>Load Plugins</Button>
-          </div>
-          <div class="flex gap-2">
-            <Button onClick={onLogout}>Logout</Button>
-          </div>
-        </div>
-      ) : (
-        <div>
-          <Button onClick={onLogin}>Login</Button>
-          <Accordion multiple collapsible>
-            <AccordionItem value="item-1">
-              <AccordionTrigger>Advanced Configuration</AccordionTrigger>
-              <AccordionContent></AccordionContent>
-            </AccordionItem>
-            <div class="flex flex-col gap-4 m-4">
-              <p>Supplying your own keys:</p>
-              <p>
-                {redirectUri()} needs be added to Authorized Javascript URIs
-              </p>
-              <div>
-                <Input
-                  placeholder="Client ID"
-                  value={clientId()}
-                  onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    setClientId(value);
-                  }}
-                />
-                <Input
-                  type="text"
-                  placeholder="Client Secret"
-                  value={clientSecret()}
-                  onChange={(e) => {
-                    const value = e.currentTarget.value;
-                    setClientSecret(value);
-                  }}
-                />
-              </div>
-              <div class="flex gap-2">
-                <Button onClick={onSaveKeys}>Save</Button>
-                <Button onClick={onClearKeys} color="error">
-                  Clear
-                </Button>
-              </div>
+      <div class="flex flex-col gap-2 w-full">
+        {isLoggedin() ? (
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              <Button onClick={onSaveNowPlaying}>Save Now Playing</Button>
+              <Button onClick={onLoadNowPlaying}>Load Now Playing</Button>
             </div>
-          </Accordion>
-        </div>
-      )}
+            <div class="flex gap-2">
+              <Button onClick={onSavePlaylists}>Save Playlists</Button>
+              <Button onClick={onLoadPlaylists}>Load Playlists</Button>
+            </div>
+            <div class="flex gap-2">
+              <Button onClick={onSavePlugins}>Save Plugins</Button>
+              <Button onClick={onLoadPlugins}>Load Plugins</Button>
+            </div>
+            <div class="flex gap-2">
+              <Button onClick={onLogout}>Logout</Button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <Button onClick={onLogin}>Login</Button>
+            <Accordion multiple collapsible>
+              <AccordionItem value="item-1">
+                <AccordionTrigger>Advanced Configuration</AccordionTrigger>
+
+                <AccordionContent>
+                  <div class="flex flex-col gap-4 m-4">
+                    <p>Supplying your own keys:</p>
+                    <p>
+                      {redirectUri()} needs be added to Authorized Javascript
+                      URIs
+                    </p>
+                    <div>
+                      <Input
+                        placeholder="Client ID"
+                        value={clientId()}
+                        onChange={(e) => {
+                          const value = e.currentTarget.value;
+                          setClientId(value);
+                        }}
+                      />
+                      <Input
+                        type="text"
+                        placeholder="Client Secret"
+                        value={clientSecret()}
+                        onChange={(e) => {
+                          const value = e.currentTarget.value;
+                          setClientSecret(value);
+                        }}
+                      />
+                    </div>
+                    <div class="flex gap-2">
+                      <Button onClick={onSaveKeys}>Save</Button>
+                      <Button onClick={onClearKeys} color="error">
+                        Clear
+                      </Button>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
