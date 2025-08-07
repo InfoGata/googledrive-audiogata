@@ -1,8 +1,6 @@
-import axios from "axios";
-import { GetFileType, MessageType, UiMessageType } from "./types";
+import ky from "ky";
+import { GetFileType, MessageType, TokenResponse, UiMessageType } from "./types";
 import { CLIENT_ID, TOKEN_SERVER, TOKEN_URL } from "./shared";
-
-const http = axios.create();
 
 const folderName = "audiogata";
 const playlistFileName = "playlists.json";
@@ -16,38 +14,31 @@ const sendMessage = (message: MessageType) => {
   application.postUiMessage(message);
 };
 
-http.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("access_token");
-    if (token && config.headers) {
-      config.headers["Authorization"] = "Bearer " + token;
-    }
-    return config;
+const http = ky.create({
+  hooks: {
+    beforeRequest: [
+      (request) => {
+        const token = localStorage.getItem("access_token");
+        if (token && request.headers) {
+          request.headers.set("Authorization", "Bearer " + token);
+        }
+        return request;
+      },
+    ],
+    afterResponse: [
+      async (request, options, response) => {
+        if (response.status === 401) {
+          const accessToken = await refreshToken();
+          if (accessToken) {
+            request.headers.set("Authorization", "Bearer " + accessToken);
+            return http(request, options);
+          }
+        }
+        return response;
+      },
+    ],
   },
-  (error) => {
-    Promise.reject(error);
-  }
-);
-
-http.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const accessToken = await refreshToken();
-      if (accessToken) {
-        originalRequest.headers = {
-          ...originalRequest.headers,
-          authorization: `Bearer ${accessToken}`,
-        };
-      }
-      return http(originalRequest);
-    }
-  }
-);
+});
 
 const setTokens = (accessToken: string, refreshToken?: string) => {
   localStorage.setItem("access_token", accessToken);
@@ -73,14 +64,15 @@ const refreshToken = async () => {
     params.append("client_secret", clientSecret);
     tokenUrl = TOKEN_URL;
   }
-  const result = await axios.post(tokenUrl, params, {
+  const result = await ky.post<TokenResponse>(tokenUrl, {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
-  });
-  if (result.data.access_token) {
-    setTokens(result.data.access_token, result.data.refresh_token);
-    return result.data.access_token as string;
+    body: params,
+  }).json();
+  if (result.access_token) {
+    setTokens(result.access_token, result.refresh_token);
+    return result.access_token as string;
   }
 };
 
@@ -151,11 +143,11 @@ application.onUiMessage = async (message: UiMessageType) => {
 
 const getFolder = async () => {
   const query = `mimeType = '${FOLDER_MIME_TYPE}' and title = '${folderName}'`;
-  const response = await http.get<GetFileType>(
+  const response = await ky.get<GetFileType>(
     `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
-  );
-  if (response.data.items.length > 0) {
-    return response.data.items[0].id;
+  ).json();
+  if (response.items.length > 0) {
+    return response.items[0].id;
   }
   return "";
 };
@@ -164,10 +156,10 @@ const loadFile = async <T>(filename: string) => {
   const id = await getFileId(filename);
   if (!id) return;
 
-  const response = await http.get<T>(
+  const response = await ky.get<T>(
     `${BASE_URL}/drive/v2/files/${id}?alt=media`
-  );
-  return response.data;
+  ).json();
+  return response;
 };
 
 const getFileId = async (filename: string) => {
@@ -175,19 +167,21 @@ const getFileId = async (filename: string) => {
   if (!id) return;
 
   const query = `'${id}' in parents and title = '${filename}'`;
-  const response = await http.get<GetFileType>(
+  const response = await ky.get<GetFileType>(
     `${BASE_URL}/drive/v2/files?q=${encodeURIComponent(query)}`
-  );
-  if (response.data.items.length > 0) {
-    return response.data.items[0].id;
+  ).json();
+  if (response.items.length > 0) {
+    return response.items[0].id;
   }
   return "";
 };
 
 const createFolder = async () => {
-  await http.post(BASE_URL + "/drive/v2/files", {
-    title: folderName,
-    mimeType: FOLDER_MIME_TYPE,
+  await ky.post(BASE_URL + "/drive/v2/files", {
+    json: {
+      title: folderName,
+      mimeType: FOLDER_MIME_TYPE,
+    },
   });
 };
 
@@ -203,22 +197,27 @@ const createFile = async (filename: string, data: any) => {
     const response = await http.put(
       BASE_URL + `/upload/drive/v2/files/${fileId}?uploadType=resumable`,
       {
-        mimeType: JSON_MIME_TYPE,
+        json: {
+          mimeType: JSON_MIME_TYPE,
+        },
       }
     );
-    const location = response.headers.location;
-    await http.put(location, JSON.stringify(data));
+    const location = response.headers.get("location");
+    if (!location) throw new Error("Location not found");
+    await http.put(location, { body: JSON.stringify(data) });
   } else {
     const response = await http.post(
       BASE_URL + "/upload/drive/v2/files?uploadType=resumable",
-      {
-        title: filename,
-        parents: [{ id }],
-        mimeType: JSON_MIME_TYPE,
+      { json: {
+          title: filename,
+          parents: [{ id }],
+          mimeType: JSON_MIME_TYPE,
+        },
       }
     );
-    const location = response.headers.location;
-    await http.post(location, JSON.stringify(data));
+    const location = response.headers.get("location");
+    if (!location) throw new Error("Location not found");
+    await http.post(location, { body: JSON.stringify(data) });
   }
 };
 

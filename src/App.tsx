@@ -1,6 +1,6 @@
-import axios from "axios";
+import ky from "ky";
 import { CLIENT_ID, TOKEN_SERVER } from "./shared";
-import { MessageType, UiMessageType } from "./types";
+import { MessageType, TokenResponse, UiMessageType } from "./types";
 import { createEffect, createSignal } from "solid-js";
 import { Button } from "./components/ui/button";
 import {
@@ -15,13 +15,6 @@ const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
 const AUTH_SCOPE = "https://www.googleapis.com/auth/drive.file";
 const redirectPath = "/login_popup.html";
 
-interface TokenResponse {
-  access_token: string;
-  expires_in: number;
-  token_type: string;
-  scope: string;
-  refresh_token: string;
-}
 
 const getToken = async (code: string, redirectUri: string) => {
   const params = new URLSearchParams();
@@ -30,12 +23,14 @@ const getToken = async (code: string, redirectUri: string) => {
   params.append("redirect_uri", redirectUri);
   params.append("grant_type", "authorization_code");
 
-  const result = await axios.post<TokenResponse>(TOKEN_SERVER, params, {
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-  });
-  return result.data;
+  const result = await ky
+    .post<TokenResponse>(TOKEN_SERVER, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params,
+    }).json();
+  return result;
 };
 
 const sendUiMessage = (message: UiMessageType) => {
@@ -46,11 +41,9 @@ const App = () => {
   const [isLoggedin, setIsLoggedin] = createSignal(false);
   const [pluginId, setPluginId] = createSignal("");
   const [redirectUri, setRedirectUri] = createSignal("");
-  const [showAdvanced, setShowAdvanced] = createSignal(false);
   const [useOwnKeys, setUseOwnKeys] = createSignal(false);
   const [clientId, setClientId] = createSignal("");
   const [clientSecret, setClientSecret] = createSignal("");
-  const [showPassword, setShowPassword] = createSignal(false);
 
   createEffect(() => {
     const onNewWindowMessage = (event: MessageEvent<MessageType>) => {
