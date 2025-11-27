@@ -262,7 +262,7 @@ application.onDeepLinkMessage = async (message: string) => {
 };
 
 const changeTheme = (theme: Theme) => {
-  localStorage.setItem("kb-color-mode", theme);
+  localStorage.setItem("vite-ui-theme", theme);
 };
 application.onChangeTheme = async (theme: Theme) => {
   changeTheme(theme);
