@@ -1,239 +1,148 @@
-import ky from "ky";
-import { CLIENT_ID, TOKEN_SERVER } from "./shared";
-import { MessageType, TokenResponse, UiMessageType } from "./types";
 import { useState, useEffect } from "preact/hooks";
 import { Button } from "./components/ui/button";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "./components/ui/accordion";
 import { Input } from "./components/ui/input";
-
-const AUTH_URL = "https://accounts.google.com/o/oauth2/auth";
-const AUTH_SCOPE = "https://www.googleapis.com/auth/drive.file";
-const redirectPath = "/login_popup.html";
-
-
-const getToken = async (code: string, redirectUri: string) => {
-  const params = new URLSearchParams();
-  params.append("client_id", CLIENT_ID);
-  params.append("code", code);
-  params.append("redirect_uri", redirectUri);
-  params.append("grant_type", "authorization_code");
-
-  const result = await ky
-    .post<TokenResponse>(TOKEN_SERVER, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: params,
-    }).json();
-  return result;
-};
+import { MessageType, UiMessageType } from "./shared";
 
 const sendUiMessage = (message: UiMessageType) => {
   parent.postMessage(message, "*");
 };
 
 const App = () => {
-  const [isLoggedin, setIsLoggedin] = useState(false);
-  const [pluginId, setPluginId] = useState("");
-  const [redirectUri, setRedirectUri] = useState("");
-  const [useOwnKeys, setUseOwnKeys] = useState(false);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [redirectUri, setRedirectUri] = useState("");
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const onNewWindowMessage = (event: MessageEvent<MessageType>) => {
+    const onMessage = (event: MessageEvent<MessageType>) => {
       switch (event.data.type) {
-        case "login":
-          if (event.data.accessToken) {
-            setIsLoggedin(true);
-          }
-          break;
         case "info":
-          setRedirectUri(event.data.origin + redirectPath);
-          setPluginId(event.data.pluginId);
           setClientId(event.data.clientId);
           setClientSecret(event.data.clientSecret);
-          break;
-        default:
-          const _exhaustive: never = event.data;
+          setRedirectUri(event.data.redirectUri);
+          setIsLoggedIn(event.data.isLoggedIn);
           break;
       }
     };
-    window.addEventListener("message", onNewWindowMessage);
+
+    window.addEventListener("message", onMessage);
     sendUiMessage({ type: "check-login" });
-    return () => window.removeEventListener("message", onNewWindowMessage);
+    return () => window.removeEventListener("message", onMessage);
   }, []);
 
-  const onLogin = () => {
-    const state = { pluginId: pluginId };
-    const url = new URL(AUTH_URL);
-    if (useOwnKeys) {
-      url.searchParams.append("client_id", clientId);
-    } else {
-      url.searchParams.append("client_id", CLIENT_ID);
-    }
-    url.searchParams.append("redirect_uri", redirectUri);
-    url.searchParams.append("scope", AUTH_SCOPE);
-    url.searchParams.append("response_type", "code");
-    url.searchParams.append("state", JSON.stringify(state));
-    url.searchParams.append("include_granted_scopes", "true");
-    url.searchParams.append("access_type", "offline");
-    url.searchParams.append("prompt", "consent");
-    console.log(url);
-
-    const newWindow = window.open(url);
-
-    const onMessage = async (returnUrl: string) => {
-      const url = new URL(returnUrl);
-      const code = url.searchParams.get("code");
-
-      if (code) {
-        const response = await getToken(code, redirectUri);
-        sendUiMessage({
-          type: "login",
-          accessToken: response.access_token,
-          refreshToken: response.refresh_token,
-        });
-        setIsLoggedin(true);
-      }
-      if (newWindow) {
-        newWindow.close();
-      }
-    };
-
-    window.onmessage = (event: MessageEvent) => {
-      console.log("why?", event);
-      if (event.source === newWindow) {
-        onMessage(event.data.url);
-      } else {
-        if (event.data.type === "deeplink") {
-          onMessage(event.data.url);
-        }
-      }
-    };
+  const saveCredentials = () => {
+    sendUiMessage({
+      type: "save",
+      clientId: clientId.trim(),
+      clientSecret: clientSecret.trim(),
+    });
   };
 
-  const onLogout = () => {
-    setIsLoggedin(false);
+  const handleLogout = () => {
     sendUiMessage({ type: "logout" });
   };
 
-  const onSaveNowPlaying = () => {
-    sendUiMessage({ type: "save-nowplaying" });
-  };
-
-  const onLoadNowPlaying = () => {
-    sendUiMessage({ type: "load-nowplaying" });
-  };
-
-  const onSavePlaylists = () => {
-    sendUiMessage({ type: "save-playlists" });
-  };
-
-  const onLoadPlaylists = () => {
-    sendUiMessage({ type: "load-playlists" });
-  };
-
-  const onSavePlugins = () => {
-    sendUiMessage({ type: "save-plugins" });
-  };
-
-  const onLoadPlugins = () => {
-    sendUiMessage({ type: "install-plugins" });
-  };
-
-  const onSaveKeys = () => {
-    setUseOwnKeys(!!clientId);
-    sendUiMessage({
-      type: "set-keys",
-      clientId: clientId,
-      clientSecret: clientSecret,
-    });
-  };
-
-  const onClearKeys = () => {
-    setClientId("");
-    setClientSecret("");
-    setUseOwnKeys(false);
-    sendUiMessage({
-      type: "set-keys",
-      clientId: "",
-      clientSecret: "",
-    });
-  };
-
   return (
-    <div className="flex">
-      <div className="flex flex-col gap-2 w-full">
-        {isLoggedin ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex gap-2">
-              <Button onClick={onSaveNowPlaying}>Save Now Playing</Button>
-              <Button onClick={onLoadNowPlaying}>Load Now Playing</Button>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={onSavePlaylists}>Save Playlists</Button>
-              <Button onClick={onLoadPlaylists}>Load Playlists</Button>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={onSavePlugins}>Save Plugins</Button>
-              <Button onClick={onLoadPlugins}>Load Plugins</Button>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={onLogout}>Logout</Button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <Button onClick={onLogin}>Login</Button>
-            <Accordion type="multiple">
-              <AccordionItem value="item-1">
-                <AccordionTrigger>Advanced Configuration</AccordionTrigger>
+    <div className="flex flex-col gap-4 p-4 max-w-md">
+      <h1 className="text-xl font-bold">Google Drive Sync Plugin Settings</h1>
 
-                <AccordionContent>
-                  <div className="flex flex-col gap-4 m-4">
-                    <p>Supplying your own keys:</p>
-                    <p>
-                      {redirectUri} needs be added to Authorized Javascript
-                      URIs
-                    </p>
-                    <div>
-                      <Input
-                        placeholder="Client ID"
-                        value={clientId}
-                        onChange={(e: any) => {
-                          const value = (e.target as HTMLInputElement).value;
-                          setClientId(value);
-                        }}
-                      />
-                      <Input
-                        type="text"
-                        placeholder="Client Secret"
-                        value={clientSecret}
-                        onChange={(e: any) => {
-                          const value = (e.target as HTMLInputElement).value;
-                          setClientSecret(value);
-                        }}
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button onClick={onSaveKeys}>Save</Button>
-                      <Button onClick={onClearKeys} variant="destructive">
-                        Clear
-                      </Button>
-                    </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
-        )}
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground">
+          Status:{" "}
+          {isLoggedIn ? (
+            <span className="text-green-600 font-medium">Connected to Google Drive</span>
+          ) : (
+            <span className="text-yellow-600 font-medium">Not Connected</span>
+          )}
+        </p>
       </div>
+
+      {isLoggedIn ? (
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            Your AudioGata playlists and favorites are being synced to a hidden
+            app folder in your Google Drive.
+          </p>
+          <Button variant="destructive" onClick={handleLogout}>
+            Disconnect from Google Drive
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md">
+            <p>
+              No setup is needed. Go to AudioGata Settings → Cloud Sync, choose
+              this plugin and log in with your Google account.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <h2 className="font-medium">Use Your Own Google OAuth Client (Optional)</h2>
+            <p className="text-sm text-muted-foreground">
+              Both the Client ID and Client Secret are required. Leave them empty
+              to use the default client.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Client ID</label>
+            <Input
+              placeholder="Your Google Client ID"
+              value={clientId}
+              onChange={(e: any) => {
+                const value = (e.target as HTMLInputElement).value;
+                setClientId(value);
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Client Secret</label>
+            <Input
+              type="password"
+              placeholder="Your Google Client Secret"
+              value={clientSecret}
+              onChange={(e: any) => {
+                const value = (e.target as HTMLInputElement).value;
+                setClientSecret(value);
+              }}
+            />
+          </div>
+
+          <Button onClick={saveCredentials}>Save</Button>
+
+          <div className="text-sm text-muted-foreground mt-4">
+            <h3 className="font-medium mb-2">Setup Instructions:</h3>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>
+                Go to the{" "}
+                <a
+                  href="https://console.cloud.google.com/apis/credentials"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Google Cloud Console
+                </a>{" "}
+                and create or select a project
+              </li>
+              <li>Enable the Google Drive API for the project</li>
+              <li>
+                On the OAuth consent screen, add the scope{" "}
+                <code className="bg-muted px-1 rounded">
+                  https://www.googleapis.com/auth/drive.appdata
+                </code>
+              </li>
+              <li>Create an OAuth client ID of type "Web application"</li>
+              <li>
+                Add this Authorized redirect URI:{" "}
+                <code className="bg-muted px-1 rounded break-all">{redirectUri}</code>
+              </li>
+              <li>Copy the Client ID and Client Secret, paste them above and click Save</li>
+              <li>Go to AudioGata Settings → Cloud Sync to connect</li>
+            </ol>
+          </div>
+        </>
+      )}
     </div>
   );
 };

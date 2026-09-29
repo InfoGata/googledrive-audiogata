@@ -4,52 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an Audiogata plugin for Google Drive integration that allows storing and retrieving audiogata data (playlists, plugins, now playing) on Google Drive. The plugin is built as a dual-entry system:
-- A main plugin entry (`src/index.ts`) that handles Google Drive API interactions
-- An options page (`src/App.tsx`) built with Preact for user interface
+An AudioGata cloud sync plugin for Google Drive. It is a storage backend only:
+AudioGata decides when to sync, merges documents with automerge and hands this
+plugin opaque bytes. The plugin never reads playlists itself.
+
+It implements, from `@infogata/audiogata-plugin-typings`:
+- `onSyncUpload({ docUrl, data })` / `onSyncDownload({ docUrl })` -- `data` is a
+  base64 automerge document; download returns `{ data: null }` when there is no
+  file yet (first sync).
+- `onLogin` / `onLoginCallback` / `onLogout` / `onIsLoggedIn` -- the app opens a
+  blank popup, `onLogin` returns the OAuth url, and the app relays the callback
+  url to `onLoginCallback`. The auth url carries `state={"pluginId": ...}` so
+  the Android app can route the callback deep link back here.
+
+This is a port of `googledrive-socialgata`; keep the two in step.
 
 ## Build Commands
 
 ```bash
-# Build both the options page and plugin
-npm run build
-
-# Build only the options page (Preact UI)
-npm run build:options
-
-# Build only the plugin entry point
-npm run build:plugin
+npm run build          # tsc, then both vite builds
+npm run build:options  # options page (Preact) -> dist/options.html
+npm run build:plugin   # plugin script -> dist/index.js
 ```
 
-## Architecture
+`dist/` is committed: jsdelivr serves the plugin from the repo.
 
-### Dual Build System
-The project uses two separate Vite configurations:
-- `vite.config.ts`: Builds the Preact options page (`src/options.html` → `dist/options.html`)
-- `plugin.vite.config.ts`: Builds the main plugin script (`src/index.ts` → `dist/index.js`)
+## Google Drive details
 
-### Key Components
-- **Main Plugin** (`src/index.ts`): Handles Google Drive API operations, OAuth token management, and file operations
-- **Options UI** (`src/App.tsx`): Preact-based interface for login, configuration, and data management
-- **Message System**: Communication between plugin and UI via `UiMessageType` and `MessageType` interfaces
-- **Token Management**: OAuth2 flow with refresh token handling and optional custom client credentials
-
-### Google Drive Integration
-- Creates and manages an "audiogata" folder in Google Drive
-- Stores three types of files: `playlists.json`, `plugins.json`, `nowplaying.json`
-- Uses Google Drive v2 API with resumable upload for file operations
-- Implements automatic token refresh on 401 responses
-
-### Technology Stack
-- **Framework**: Preact for UI, TypeScript throughout
-- **UI Components**: shadcn/ui with Radix UI primitives
-- **Styling**: Tailwind CSS v4 with @tailwindcss/vite plugin
-- **HTTP Client**: ky for API requests
-- **Build**: Vite with single-file plugin for bundling
-- **Types**: Uses `@infogata/audiogata-plugin-typings` for plugin interface types
-
-### Key Files
-- `src/shared.ts`: Contains OAuth client configuration and token server URLs
-- `src/types.ts`: TypeScript interfaces for message passing and API responses
-- `manifest.json`: Plugin manifest defining entry points and metadata
-- `src/components/ui/`: shadcn/ui components (Button, Input, Accordion)
+- Files live in the hidden `appDataFolder` (`drive.appdata` scope), named
+  `<docUrl>.automerge` (AudioGata uses `audiogata-library`).
+- Drive addresses files by id; ids are looked up by name once and cached in
+  localStorage. Lookups order by `createdTime` so devices that each created a
+  copy settle on the oldest. A 404 on a cached id drops the cache and retries.
+- Tokens: the default OAuth client's secret lives in the token service
+  (`TOKEN_SERVER` in `src/shared.ts`), so code exchange and refresh go through
+  it. A user's own client is used only when both id and secret are set.
+  Access tokens are refreshed a minute before expiry and once more on a 401;
+  concurrent refreshes share one request.
+- All Drive calls go through `application.networkRequest`.

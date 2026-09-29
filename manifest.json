@@ -1,12 +1,10 @@
 {
   "id": "05KGl-ijn6XN-NMCaqy-x",
-  "name": "Plugin for Google Drive",
-  "version": "1.5.0",
-  "description": "Store and retrieve playlists from Google Drive",
+  "name": "Google Drive Sync",
+  "version": "2.0.0",
+  "description": "Sync your playlists and favorites between devices with Google Drive",
   "script": "dist/index.js",
-  "options": {
-    "page": "dist/options.html"
-  },
+  "options": "dist/options.html",
   "updateUrl": "https://cdn.jsdelivr.net/gh/InfoGata/googledrive-audiogata@latest/manifest.json",
   "homepage": "https://github.com/InfoGata/googledrive-audiogata"
 }
